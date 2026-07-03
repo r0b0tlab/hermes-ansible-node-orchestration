@@ -1,0 +1,90 @@
+---
+- name: Require model key
+  ansible.builtin.assert:
+    that:
+      - benchmark_runner_model_key | length > 0
+    fail_msg: Provide -e model_key=<key> for benchmark runs.
+
+- name: Require supported benchmark kind
+  ansible.builtin.assert:
+    that:
+      - benchmark_runner_kind in ['gsm8k', 'custom']
+    fail_msg: "Supported benchmark kinds are 'gsm8k' and 'custom'."
+
+- name: Check existing benchmark tmux session
+  ansible.builtin.command: "tmux has-session -t {{ benchmark_runner_tmux_session }}"
+  register: benchmark_runner_existing_session
+  changed_when: false
+  failed_when: false
+
+- name: Capture existing benchmark tmux output
+  ansible.builtin.command: "tmux capture-pane -t {{ benchmark_runner_tmux_session }} -p -S -{{ benchmark_runner_capture_lines }}"
+  register: benchmark_runner_tmux_capture
+  changed_when: false
+  failed_when: false
+  when: benchmark_runner_existing_session.rc == 0
+
+- name: Emit monitor-only benchmark status
+  ansible.builtin.debug:
+    msg:
+      session: "{{ benchmark_runner_tmux_session }}"
+      running: "{{ benchmark_runner_existing_session.rc == 0 }}"
+      run_dir: "{{ benchmark_runner_run_dir }}"
+      tail: "{{ benchmark_runner_tmux_capture.stdout_lines | default([]) }}"
+  when: benchmark_runner_monitor_only | bool
+
+- name: Stop after monitor-only status
+  ansible.builtin.meta: end_host
+  when: benchmark_runner_monitor_only | bool
+
+- name: Refuse duplicate benchmark session unless force relaunch is enabled
+  ansible.builtin.assert:
+    that:
+      - benchmark_runner_existing_session.rc != 0 or benchmark_runner_force_relaunch | bool
+    fail_msg: >-
+      Benchmark tmux session {{ benchmark_runner_tmux_session }} already exists.
+      Use -e monitor_only=true to inspect it, or explicitly set
+      benchmark_runner_force_relaunch=true after deciding how to handle the active run.
+
+- name: Require custom command for custom benchmark kind
+  ansible.builtin.assert:
+    that:
+      - benchmark_runner_custom_command | length > 0
+    fail_msg: Provide -e benchmark_command='<command>' when benchmark=custom.
+  when: benchmark_runner_kind == 'custom'
+
+- name: Create benchmark run directory
+  ansible.builtin.file:
+    path: "{{ benchmark_runner_run_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Render GSM8K lm-eval launcher
+  ansible.builtin.template:
+    src: gsm8k-lm-eval.sh.j2
+    dest: "{{ benchmark_runner_run_dir }}/launch.sh"
+    mode: "0755"
+  when: benchmark_runner_kind == 'gsm8k'
+
+- name: Render custom benchmark launcher
+  ansible.builtin.template:
+    src: custom-benchmark.sh.j2
+    dest: "{{ benchmark_runner_run_dir }}/launch.sh"
+    mode: "0755"
+  when: benchmark_runner_kind == 'custom'
+
+- name: Launch benchmark in tmux
+  ansible.builtin.command: "tmux new-session -d -s {{ benchmark_runner_tmux_session }} 'bash {{ benchmark_runner_run_dir }}/launch.sh'"
+  register: benchmark_runner_launch_result
+  changed_when: true
+  when: benchmark_runner_launch | bool
+
+- name: Emit benchmark launch summary
+  ansible.builtin.debug:
+    msg:
+      session: "{{ benchmark_runner_tmux_session }}"
+      run_dir: "{{ benchmark_runner_run_dir }}"
+      benchmark: "{{ benchmark_runner_kind }}"
+      model_key: "{{ benchmark_runner_model_key }}"
+      endpoint_url: "{{ benchmark_runner_endpoint_url }}"
+      monitor: "ansible-playbook -i <inventory> playbooks/benchmark.yml -l <target> -e model_key={{ benchmark_runner_model_key }} -e monitor_only=true"

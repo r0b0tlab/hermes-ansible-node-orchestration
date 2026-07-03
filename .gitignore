@@ -1,0 +1,54 @@
+# Python / virtualenv
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Ansible
+*.retry
+.vault_pass*
+.vault-password*
+.ansible/
+
+# Secrets and local operator config
+.env
+.env.*
+!.env.example
+local/
+inventories/local/
+inventories/*local*.yml
+group_vars/*/vault.yml
+host_vars/*/vault.yml
+**/vault.yml
+
+# Runtime evidence / logs / benchmark outputs
+evidence/
+artifacts/
+results/
+logs/
+*.log
+*.jsonl
+*.nsys-rep
+*.sqlite
+
+# Caches
+.cache/
+
+# Hermes runtime state if this becomes a profile distribution
+auth.json
+state.db*
+hermes_state.db*
+response_store.db*
+sessions/
+memories/
+cache/
+image_cache/
+audio_cache/
+document_cache/
+browser_screenshots/
+checkpoints/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,7 @@
+---
+evidence_bundle_run_id: "{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%SZ') }}"
+evidence_bundle_local_root: "{{ playbook_dir }}/../evidence"
+evidence_bundle_remote_root: /var/tmp/gb10-evidence
+evidence_bundle_collect_docker_logs: false
+evidence_bundle_container_names: []
+evidence_bundle_tmux_sessions: []

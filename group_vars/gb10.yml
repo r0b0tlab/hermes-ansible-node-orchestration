@@ -1,0 +1,15 @@
+---
+# GB10 / DGX Spark defaults. These are deliberately conservative and
+# override-friendly.
+
+gb10_docker_enabled: true
+gb10_nvidia_container_toolkit_enabled: true
+gb10_default_kv_cache_dtype: fp8
+
+gb10_flashinfer_max_jobs: 6
+gb10_flashinfer_nvcc_threads: 2
+gb10_nvcc_threads: 2
+
+gb10_default_model_root: /models
+gb10_default_results_root: /var/tmp/gb10-results
+gb10_default_container_runtime: docker

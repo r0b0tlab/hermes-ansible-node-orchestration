@@ -1,0 +1,20 @@
+---
+- name: Launch or monitor GB10 benchmarks
+  hosts: gb10
+  gather_facts: true
+  pre_tasks:
+    - name: Require explicit target limit unless override is set
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined or gb10_allow_unlimited_benchmark | default(false) | bool
+        fail_msg: >-
+          Refusing to run benchmarks without --limit/-l. Re-run with -l <host-or-group>
+          or set gb10_allow_unlimited_benchmark=true intentionally.
+        success_msg: Benchmark target scope is explicit.
+    - name: Require model key
+      ansible.builtin.assert:
+        that:
+          - model_key is defined
+        fail_msg: Provide -e model_key=<key> for benchmark runs.
+  roles:
+    - role: benchmark_runner

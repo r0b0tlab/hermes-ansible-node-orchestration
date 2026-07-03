@@ -1,0 +1,6 @@
+---
+- name: Collect GB10 evidence bundle
+  hosts: gb10
+  gather_facts: true
+  roles:
+    - role: evidence_bundle

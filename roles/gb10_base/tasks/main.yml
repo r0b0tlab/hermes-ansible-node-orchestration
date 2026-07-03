@@ -1,0 +1,37 @@
+---
+- name: Install conservative base packages
+  ansible.builtin.package:
+    name: "{{ gb10_base_packages }}"
+    state: present
+  become: true
+  when: gb10_base_manage_packages | bool
+
+- name: Create GB10 working directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  become: true
+  loop: "{{ gb10_base_directories }}"
+  when: gb10_base_create_directories | bool
+
+- name: Refuse sysctl tuning unless explicitly enabled
+  ansible.builtin.assert:
+    that:
+      - not (gb10_base_sysctl_values | length > 0) or gb10_base_enable_sysctl_tuning | bool
+    fail_msg: >-
+      gb10_base_sysctl_values were provided but gb10_base_enable_sysctl_tuning is false.
+      Enable it explicitly after reviewing the values.
+    success_msg: Sysctl tuning gate is satisfied.
+
+- name: Apply explicitly enabled sysctl tuning
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+  become: true
+  loop: "{{ gb10_base_sysctl_values | dict2items }}"
+  when:
+    - gb10_base_enable_sysctl_tuning | bool
+    - gb10_base_sysctl_values | length > 0

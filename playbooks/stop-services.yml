@@ -1,0 +1,55 @@
+---
+- name: Stop selected GB10 service containers
+  hosts: gb10
+  gather_facts: false
+  vars:
+    stop_services_container_name: "{{ container_name | default('') }}"
+    stop_services_model_key: "{{ model_key | default('') }}"
+    stop_services_model: "{{ gb10_models[stop_services_model_key] | default({}) }}"
+    stop_services_target_container: "{{ stop_services_container_name | default(stop_services_model.container_name | default(''), true) }}"
+  pre_tasks:
+    - name: Require explicit target limit unless override is set
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined or gb10_allow_unlimited_stop | default(false) | bool
+        fail_msg: >-
+          Refusing to stop services without --limit/-l. Re-run with -l <host-or-group>
+          or set gb10_allow_unlimited_stop=true intentionally.
+        success_msg: Stop target scope is explicit.
+    - name: Require explicit container name or model key
+      ansible.builtin.assert:
+        that:
+          - stop_services_target_container | length > 0
+        fail_msg: Provide -e container_name=<name> or -e model_key=<key> with gb10_models[model_key].container_name.
+  tasks:
+    - name: Inspect target container
+      ansible.builtin.command: "docker inspect {{ stop_services_target_container }}"
+      register: stop_services_inspect
+      changed_when: false
+      failed_when: false
+
+    - name: Stop target container if present
+      ansible.builtin.command: "docker stop {{ stop_services_target_container }}"
+      become: true
+      register: stop_services_stop
+      changed_when: stop_services_stop.rc == 0
+      failed_when: false
+      when: stop_services_inspect.rc == 0
+
+    - name: Remove target container if requested
+      ansible.builtin.command: "docker rm {{ stop_services_target_container }}"
+      become: true
+      register: stop_services_rm
+      changed_when: stop_services_rm.rc == 0
+      failed_when: false
+      when:
+        - stop_services_inspect.rc == 0
+        - remove_container | default(false) | bool
+
+    - name: Emit stop service summary
+      ansible.builtin.debug:
+        msg:
+          container: "{{ stop_services_target_container }}"
+          existed: "{{ stop_services_inspect.rc == 0 }}"
+          stopped: "{{ stop_services_stop.rc | default(1) == 0 }}"
+          removed: "{{ stop_services_rm.rc | default(1) == 0 }}"

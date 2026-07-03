@@ -1,0 +1,75 @@
+---
+- name: Require a model key or explicit source/destination paths
+  ansible.builtin.assert:
+    that:
+      - model_artifacts_model_key | length > 0 or (model_artifacts_source_path | length > 0 and model_artifacts_destination_path | length > 0)
+    fail_msg: >-
+      Provide model_key for gb10_models lookup, or provide model_source_path and
+      model_destination_path explicitly.
+    success_msg: Model artifact inputs are present.
+
+- name: Require destination path
+  ansible.builtin.assert:
+    that:
+      - model_artifacts_destination_path | length > 0
+    fail_msg: Destination path is empty. Define gb10_models[model_key].local_path or model_destination_path.
+
+- name: Check source artifact exists on controller
+  ansible.builtin.stat:
+    path: "{{ model_artifacts_source_path }}"
+  delegate_to: localhost
+  become: false
+  register: model_artifacts_source_stat
+  when: model_artifacts_source_path | length > 0
+
+- name: Require existing controller source when source path is provided
+  ansible.builtin.assert:
+    that:
+      - model_artifacts_source_stat.stat.exists | default(false)
+    fail_msg: "Controller source path does not exist: {{ model_artifacts_source_path }}"
+  when: model_artifacts_source_path | length > 0
+
+- name: Create destination parent directory
+  ansible.builtin.file:
+    path: "{{ model_artifacts_destination_path }}"
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Synchronize artifact directory or file from controller
+  ansible.posix.synchronize:
+    src: "{{ model_artifacts_source_path }}/"
+    dest: "{{ model_artifacts_destination_path }}/"
+    archive: "{{ model_artifacts_rsync_archive }}"
+    compress: "{{ model_artifacts_rsync_compress }}"
+    delete: "{{ model_artifacts_delete_extra }}"
+  when: model_artifacts_source_path | length > 0
+
+- name: Capture remote artifact manifest
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    find {{ model_artifacts_destination_path | quote }}
+    -maxdepth {{ model_artifacts_manifest_max_depth | int }}
+    -type f -printf '%P %s\\n' | sort | head -1000
+  args:
+    executable: /bin/bash
+  register: model_artifacts_remote_manifest
+  changed_when: false
+  failed_when: false
+  when: model_artifacts_capture_remote_manifest | bool
+
+- name: Write remote artifact manifest
+  ansible.builtin.template:
+    src: manifest.txt.j2
+    dest: "{{ model_artifacts_destination_path }}/{{ model_artifacts_manifest_name }}"
+    mode: "0644"
+  become: true
+  when: model_artifacts_capture_remote_manifest | bool
+
+- name: Emit model artifact summary
+  ansible.builtin.debug:
+    msg:
+      model_key: "{{ model_artifacts_model_key | default('') }}"
+      source: "{{ model_artifacts_source_path | default('') }}"
+      destination: "{{ model_artifacts_destination_path }}"
+      manifest: "{{ model_artifacts_destination_path }}/{{ model_artifacts_manifest_name }}"

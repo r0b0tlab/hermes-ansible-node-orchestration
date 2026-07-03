@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+{% for key, value in (vllm_service_default_env | combine(vllm_service_extra_env)).items() %}
+export {{ key }}={{ value | quote }}
+{% endfor %}
+
+exec docker run --rm -d \
+  --name {{ vllm_service_container_name | quote }} \
+  --gpus {{ vllm_service_gpu_arg | quote }} \
+  --ipc=host \
+  -p {{ vllm_service_host_port }}:{{ vllm_service_port }} \
+  -v {{ vllm_service_model_path | quote }}:/model:ro \
+{% for key, value in (vllm_service_default_env | combine(vllm_service_extra_env)).items() %}
+  -e {{ key }}={{ value | quote }} \
+{% endfor %}
+  {{ vllm_service_image | quote }} \
+  --host {{ vllm_service_ip }} \
+  --port {{ vllm_service_port }} \
+  --model /model \
+  --served-model-name {{ vllm_service_served_model_name | quote }} \
+  --kv-cache-dtype {{ vllm_service_kv_cache_dtype | quote }} \
+  --max-model-len {{ vllm_service_max_model_len }} \
+  --tensor-parallel-size {{ vllm_service_tensor_parallel_size }}{% for arg in vllm_service_additional_args %} \
+  {{ arg }}{% endfor %}

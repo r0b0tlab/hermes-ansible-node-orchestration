@@ -1,0 +1,10 @@
+---
+gb10_base_manage_packages: true
+gb10_base_create_directories: true
+gb10_base_directories:
+  - "{{ gb10_default_model_root | default('/models') }}"
+  - "{{ gb10_default_results_root | default('/var/tmp/gb10-results') }}"
+  - /var/tmp/gb10-evidence
+gb10_base_packages: "{{ gb10_required_base_packages | default(['curl', 'rsync', 'tmux', 'python3', 'python3-venv', 'python3-pip']) }}"
+gb10_base_enable_sysctl_tuning: false
+gb10_base_sysctl_values: {}

@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: gb10_base
+  author: r0b0tlab
+  description: Conservative base package and directory setup for GB10 nodes.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+dependencies: []

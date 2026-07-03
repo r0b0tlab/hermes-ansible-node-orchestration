@@ -1,0 +1,12 @@
+---
+model_artifacts_model_key: "{{ model_key | default('') }}"
+model_artifacts_registry: "{{ gb10_models | default({}) }}"
+model_artifacts_item: "{{ model_artifacts_registry[model_artifacts_model_key] | default({}) }}"
+model_artifacts_source_path: "{{ model_source_path | default(model_artifacts_item.source_path | default('')) }}"
+model_artifacts_destination_path: "{{ model_destination_path | default(model_artifacts_item.local_path | default('')) }}"
+model_artifacts_manifest_name: MANIFEST.gb10-artifacts.txt
+model_artifacts_delete_extra: false
+model_artifacts_rsync_archive: true
+model_artifacts_rsync_compress: false
+model_artifacts_capture_remote_manifest: true
+model_artifacts_manifest_max_depth: 3

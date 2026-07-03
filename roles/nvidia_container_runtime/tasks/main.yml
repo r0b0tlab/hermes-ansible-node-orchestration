@@ -1,0 +1,64 @@
+---
+- name: Check whether Docker CLI is present
+  ansible.builtin.command: which docker
+  register: nvidia_container_runtime_docker_cli
+  changed_when: false
+  failed_when: false
+
+- name: Install Docker packages when enabled and absent
+  ansible.builtin.package:
+    name: "{{ nvidia_container_runtime_docker_packages }}"
+    state: present
+  become: true
+  when:
+    - nvidia_container_runtime_manage_docker | bool
+    - nvidia_container_runtime_install_packages | bool
+    - nvidia_container_runtime_docker_cli.rc != 0
+
+- name: Ensure Docker service is enabled and started when managed
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+  become: true
+  when: nvidia_container_runtime_manage_docker | bool
+
+- name: Check whether nvidia-ctk is present
+  ansible.builtin.command: which nvidia-ctk
+  register: nvidia_container_runtime_ctk
+  changed_when: false
+  failed_when: false
+
+- name: Install NVIDIA Container Toolkit packages when enabled and absent
+  ansible.builtin.package:
+    name: "{{ nvidia_container_runtime_toolkit_packages }}"
+    state: present
+  become: true
+  when:
+    - nvidia_container_runtime_manage_toolkit | bool
+    - nvidia_container_runtime_install_packages | bool
+    - nvidia_container_runtime_ctk.rc != 0
+
+- name: Configure NVIDIA runtime for Docker only when explicitly enabled
+  ansible.builtin.command: nvidia-ctk runtime configure --runtime=docker
+  become: true
+  register: nvidia_container_runtime_configure
+  changed_when: "'Updated' in nvidia_container_runtime_configure.stdout or nvidia_container_runtime_configure.rc == 0"
+  when:
+    - nvidia_container_runtime_manage_toolkit | bool
+    - nvidia_container_runtime_configure_default | bool
+  notify: Restart docker
+
+- name: Verify Docker can see NVIDIA runtime metadata when available
+  ansible.builtin.command: docker info --format '{{ "{{" }}json .Runtimes{{ "}}" }}'
+  register: nvidia_container_runtime_docker_info
+  changed_when: false
+  failed_when: false
+  when: nvidia_container_runtime_manage_docker | bool
+
+- name: Emit NVIDIA runtime summary
+  ansible.builtin.debug:
+    msg:
+      docker_cli_present: "{{ nvidia_container_runtime_docker_cli.rc == 0 }}"
+      nvidia_ctk_present: "{{ nvidia_container_runtime_ctk.rc == 0 }}"
+      docker_runtimes: "{{ nvidia_container_runtime_docker_info.stdout | default('unavailable') }}"

@@ -1,0 +1,17 @@
+---
+- name: Provision GB10 node baseline
+  hosts: gb10
+  gather_facts: true
+  any_errors_fatal: false
+  pre_tasks:
+    - name: Require explicit target limit unless override is set
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined or gb10_allow_unlimited_provision | default(false) | bool
+        fail_msg: >-
+          Refusing to provision without --limit/-l. Re-run with -l <host-or-group>
+          or set gb10_allow_unlimited_provision=true intentionally.
+        success_msg: Provision target scope is explicit.
+  roles:
+    - role: gb10_base
+    - role: nvidia_container_runtime

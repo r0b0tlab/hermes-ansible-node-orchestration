@@ -1,0 +1,18 @@
+---
+# Example model registry. Copy to local vars and customize for real clusters.
+# Keep private model paths, HF tokens, and license-gated URLs out of git.
+
+gb10_models:
+  example-small-model:
+    description: Placeholder model entry for documentation and smoke tests.
+    local_path: /models/example-small-model
+    served_model_name: example-small-model
+    container_name: gb10-example-small-model
+    port: 8000
+    kv_cache_dtype: "{{ gb10_default_kv_cache_dtype }}"
+    max_model_len: 4096
+    tensor_parallel_size: 1
+    extra_env:
+      MAX_JOBS: "{{ gb10_flashinfer_max_jobs }}"
+      FLASHINFER_NVCC_THREADS: "{{ gb10_flashinfer_nvcc_threads }}"
+      NVCC_THREADS: "{{ gb10_nvcc_threads }}"

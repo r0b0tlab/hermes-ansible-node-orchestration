@@ -1,0 +1,116 @@
+---
+- name: Require model key
+  ansible.builtin.assert:
+    that:
+      - vllm_service_model_key | length > 0
+    fail_msg: Provide -e model_key=<key> for vLLM serving.
+
+- name: Require model path
+  ansible.builtin.assert:
+    that:
+      - vllm_service_model_path | length > 0
+    fail_msg: Define gb10_models[model_key].local_path or pass -e model_path=<path>.
+
+- name: Check model path exists on target
+  ansible.builtin.stat:
+    path: "{{ vllm_service_model_path }}"
+  register: vllm_service_model_path_stat
+
+- name: Require existing model path on target
+  ansible.builtin.assert:
+    that:
+      - vllm_service_model_path_stat.stat.exists
+    fail_msg: "Model path is absent on target: {{ vllm_service_model_path }}. Run sync-model first."
+
+- name: Check Docker CLI exists on target
+  ansible.builtin.command: which docker
+  register: vllm_service_docker_cli
+  changed_when: false
+  failed_when: vllm_service_docker_cli.rc != 0
+
+- name: Inspect existing service container
+  ansible.builtin.command: "docker inspect {{ vllm_service_container_name }}"
+  register: vllm_service_existing_container
+  changed_when: false
+  failed_when: false
+
+- name: Refuse to replace existing container unless explicitly allowed
+  ansible.builtin.assert:
+    that:
+      - vllm_service_existing_container.rc != 0 or vllm_service_replace_existing | bool
+    fail_msg: >-
+      Container {{ vllm_service_container_name }} already exists. Set
+      gb10_allow_container_replacement=true or vllm_service_replace_existing=true
+      to replace it intentionally.
+
+- name: Pull vLLM image when explicitly enabled
+  ansible.builtin.command: "docker pull {{ vllm_service_image }}"
+  become: true
+  register: vllm_service_pull
+  changed_when: >-
+    'Downloaded newer image' in vllm_service_pull.stdout or
+    'Pull complete' in vllm_service_pull.stdout or
+    vllm_service_pull.rc == 0
+  when: vllm_service_pull_image | bool
+
+- name: Stop existing service container when replacement is allowed
+  ansible.builtin.command: "docker stop {{ vllm_service_container_name }}"
+  become: true
+  register: vllm_service_stop
+  changed_when: vllm_service_stop.rc == 0
+  failed_when: false
+  when:
+    - vllm_service_existing_container.rc == 0
+    - vllm_service_replace_existing | bool
+
+- name: Remove existing service container when replacement is allowed
+  ansible.builtin.command: "docker rm {{ vllm_service_container_name }}"
+  become: true
+  register: vllm_service_rm
+  changed_when: vllm_service_rm.rc == 0
+  failed_when: false
+  when:
+    - vllm_service_existing_container.rc == 0
+    - vllm_service_replace_existing | bool
+
+- name: Create service launch directory
+  ansible.builtin.file:
+    path: "/var/tmp/gb10-vllm/{{ vllm_service_container_name }}"
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Render vLLM launch script
+  ansible.builtin.template:
+    src: vllm-launch.sh.j2
+    dest: "/var/tmp/gb10-vllm/{{ vllm_service_container_name }}/launch.sh"
+    mode: "0755"
+  become: true
+
+- name: Launch vLLM container detached
+  ansible.builtin.command: "bash /var/tmp/gb10-vllm/{{ vllm_service_container_name }}/launch.sh -d"
+  become: true
+  register: vllm_service_launch
+  changed_when: true
+
+- name: Verify vLLM models endpoint
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ vllm_service_host_port }}/v1/models"
+    method: GET
+    status_code: 200
+    return_content: true
+  register: vllm_service_endpoint
+  retries: "{{ vllm_service_verify_retries }}"
+  delay: "{{ vllm_service_verify_delay }}"
+  until: vllm_service_endpoint.status == 200
+  when: vllm_service_verify_endpoint | bool
+
+- name: Emit vLLM service summary
+  ansible.builtin.debug:
+    msg:
+      container: "{{ vllm_service_container_name }}"
+      image: "{{ vllm_service_image }}"
+      model_path: "{{ vllm_service_model_path }}"
+      served_model_name: "{{ vllm_service_served_model_name }}"
+      endpoint: "http://127.0.0.1:{{ vllm_service_host_port }}/v1/models"
+      kv_cache_dtype: "{{ vllm_service_kv_cache_dtype }}"

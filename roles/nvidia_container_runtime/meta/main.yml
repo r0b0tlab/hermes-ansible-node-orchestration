@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: nvidia_container_runtime
+  author: r0b0tlab
+  description: Verify or install Docker and NVIDIA Container Toolkit for GB10 nodes.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+dependencies: []

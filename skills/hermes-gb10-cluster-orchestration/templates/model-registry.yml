@@ -1,0 +1,11 @@
+---
+gb10_models:
+  example-model:
+    local_path: /models/example-model
+    served_model_name: example-model
+    container_name: gb10-example-model
+    port: 8000
+    image: vllm/vllm-openai:latest
+    kv_cache_dtype: fp8
+    max_model_len: 4096
+    tensor_parallel_size: 1

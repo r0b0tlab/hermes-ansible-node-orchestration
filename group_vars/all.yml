@@ -1,0 +1,23 @@
+---
+# Safe global defaults. Operators may override these in local inventories,
+# group_vars, host_vars, or extra-vars.
+
+gb10_operator_user: "{{ ansible_user | default('gb10') }}"
+gb10_evidence_root: "{{ playbook_dir }}/../evidence"
+gb10_tmux_prefix: gb10
+gb10_allow_network_changes: false
+gb10_allow_reboots: false
+gb10_allow_container_replacement: false
+
+gb10_required_base_packages:
+  - curl
+  - rsync
+  - tmux
+  - python3
+  - python3-venv
+  - python3-pip
+
+gb10_health_listening_ports:
+  - 8000
+  - 8080
+  - 8081

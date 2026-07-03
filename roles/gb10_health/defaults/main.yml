@@ -1,0 +1,5 @@
+---
+gb10_health_listening_ports: []
+gb10_health_collect_docker: true
+gb10_health_collect_gpu: true
+gb10_health_collect_tmux: true

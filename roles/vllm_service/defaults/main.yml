@@ -1,0 +1,26 @@
+---
+vllm_service_model_key: "{{ model_key | default('') }}"
+vllm_service_registry: "{{ gb10_models | default({}) }}"
+vllm_service_model: "{{ vllm_service_registry[vllm_service_model_key] | default({}) }}"
+vllm_service_image: "{{ image_name | default(vllm_service_model.image | default('vllm/vllm-openai:latest')) }}"
+vllm_service_model_path: "{{ model_path | default(vllm_service_model.local_path | default('')) }}"
+vllm_service_served_model_name: "{{ served_model_name | default(vllm_service_model.served_model_name | default(vllm_service_model_key)) }}"
+vllm_service_container_name: "{{ container_name | default(vllm_service_model.container_name | default('gb10-' ~ vllm_service_model_key)) }}"
+vllm_service_port: "{{ port | default(vllm_service_model.port | default(8000)) }}"
+vllm_service_host_port: "{{ host_port | default(vllm_service_port) }}"
+vllm_service_kv_cache_dtype: "{{ kv_cache_dtype | default(vllm_service_model.kv_cache_dtype | default(gb10_default_kv_cache_dtype | default('fp8'))) }}"
+vllm_service_max_model_len: "{{ max_model_len | default(vllm_service_model.max_model_len | default(4096)) }}"
+vllm_service_tensor_parallel_size: "{{ tensor_parallel_size | default(vllm_service_model.tensor_parallel_size | default(1)) }}"
+vllm_service_gpu_arg: all
+vllm_service_ip: 0.0.0.0
+vllm_service_extra_env: "{{ vllm_service_model.extra_env | default({}) }}"
+vllm_service_default_env:
+  MAX_JOBS: "{{ gb10_flashinfer_max_jobs | default(6) }}"
+  FLASHINFER_NVCC_THREADS: "{{ gb10_flashinfer_nvcc_threads | default(2) }}"
+  NVCC_THREADS: "{{ gb10_nvcc_threads | default(2) }}"
+vllm_service_replace_existing: "{{ gb10_allow_container_replacement | default(false) }}"
+vllm_service_pull_image: false
+vllm_service_verify_endpoint: true
+vllm_service_verify_retries: 30
+vllm_service_verify_delay: 10
+vllm_service_additional_args: "{{ vllm_service_model.additional_args | default([]) }}"

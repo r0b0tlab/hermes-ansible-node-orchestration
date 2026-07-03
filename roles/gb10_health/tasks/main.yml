@@ -1,0 +1,64 @@
+---
+- name: Capture system identity
+  ansible.builtin.command: hostnamectl
+  register: gb10_health_hostnamectl
+  changed_when: false
+  failed_when: false
+
+- name: Capture uptime
+  ansible.builtin.command: uptime
+  register: gb10_health_uptime
+  changed_when: false
+  failed_when: false
+
+- name: Capture memory summary
+  ansible.builtin.command: free -h
+  register: gb10_health_memory
+  changed_when: false
+  failed_when: false
+
+- name: Capture disk summary
+  ansible.builtin.command: df -h /
+  register: gb10_health_disk
+  changed_when: false
+  failed_when: false
+
+- name: Check NVIDIA GPU state
+  ansible.builtin.command: nvidia-smi --query-gpu=name,driver_version,temperature.gpu,power.draw,memory.used,memory.total,utilization.gpu --format=csv,noheader,nounits
+  register: gb10_health_gpu
+  changed_when: false
+  failed_when: false
+  when: gb10_health_collect_gpu | bool
+
+- name: Check Docker containers
+  ansible.builtin.command: docker ps --format '{{ "{{" }}.Names{{ "}}" }} {{ "{{" }}.Status{{ "}}" }}'
+  register: gb10_health_docker_ps
+  changed_when: false
+  failed_when: false
+  when: gb10_health_collect_docker | bool
+
+- name: Check tmux sessions
+  ansible.builtin.command: tmux ls
+  register: gb10_health_tmux
+  changed_when: false
+  failed_when: false
+  when: gb10_health_collect_tmux | bool
+
+- name: Check listening TCP ports
+  ansible.builtin.shell: "set -o pipefail && ss -ltnp | sed -n '1,40p'"
+  args:
+    executable: /bin/bash
+  register: gb10_health_ports
+  changed_when: false
+  failed_when: false
+
+- name: Emit concise health summary
+  ansible.builtin.debug:
+    msg:
+      host: "{{ inventory_hostname }}"
+      ansible_host: "{{ ansible_host | default(inventory_hostname) }}"
+      gb10_role: "{{ gb10_role | default('unspecified') }}"
+      uptime: "{{ gb10_health_uptime.stdout | default('unavailable') }}"
+      gpu: "{{ gb10_health_gpu.stdout_lines | default([]) }}"
+      docker_containers: "{{ gb10_health_docker_ps.stdout_lines | default([]) }}"
+      tmux_sessions: "{{ gb10_health_tmux.stdout_lines | default([]) }}"

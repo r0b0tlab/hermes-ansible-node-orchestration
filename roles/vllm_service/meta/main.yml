@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: vllm_service
+  author: r0b0tlab
+  description: Safely run and verify vLLM OpenAI-compatible containers on GB10 nodes.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+dependencies: []

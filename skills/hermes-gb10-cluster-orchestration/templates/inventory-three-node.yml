@@ -1,0 +1,20 @@
+---
+all:
+  children:
+    gb10:
+      children:
+        gb10_heads:
+          hosts:
+            head01:
+              ansible_host: 10.0.0.10
+              gb10_role: head
+        gb10_workers:
+          hosts:
+            worker01:
+              ansible_host: 10.0.0.11
+              gb10_role: worker
+            worker02:
+              ansible_host: 10.0.0.12
+              gb10_role: worker
+      vars:
+        ansible_user: gb10

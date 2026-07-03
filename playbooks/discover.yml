@@ -1,0 +1,8 @@
+---
+- name: Read-only discovery placeholder. Provide a node list/range design before enabling subnet probes.
+  hosts: gb10
+  gather_facts: false
+  tasks:
+    - name: Report planned playbook status
+      ansible.builtin.debug:
+        msg: "Read-only discovery placeholder. Provide a node list/range design before enabling subnet probes."

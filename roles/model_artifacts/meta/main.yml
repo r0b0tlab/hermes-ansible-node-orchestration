@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: model_artifacts
+  author: r0b0tlab
+  description: Validate, synchronize, and manifest model artifacts for GB10 nodes.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+dependencies: []

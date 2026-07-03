@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: gb10_health
+  author: r0b0tlab
+  description: Read-only GB10 health collection role.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+dependencies: []

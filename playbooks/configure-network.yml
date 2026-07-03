@@ -1,0 +1,12 @@
+---
+- name: Guarded GB10 network configuration placeholder
+  hosts: gb10
+  gather_facts: true
+  tasks:
+    - name: Refuse network changes unless explicitly enabled
+      ansible.builtin.assert:
+        that:
+          - gb10_allow_network_changes | default(false) | bool
+        fail_msg: >-
+          Network configuration is intentionally not implemented/enabled yet.
+          Do not run netplan apply from this repo without a rollback plan.

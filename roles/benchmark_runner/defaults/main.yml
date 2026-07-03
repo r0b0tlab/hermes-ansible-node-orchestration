@@ -1,0 +1,28 @@
+---
+benchmark_runner_model_key: "{{ model_key | default('') }}"
+benchmark_runner_model_registry: "{{ gb10_models | default({}) }}"
+benchmark_runner_model: "{{ benchmark_runner_model_registry[benchmark_runner_model_key] | default({}) }}"
+benchmark_runner_kind: "{{ benchmark | default('gsm8k') }}"
+benchmark_runner_run_id: "{{ run_id | default(lookup('pipe', 'date -u +%Y%m%dT%H%M%SZ')) }}"
+benchmark_runner_results_root: "{{ benchmark_results_root | default(gb10_default_results_root | default('/var/tmp/gb10-results')) }}"
+benchmark_runner_run_dir: "{{ benchmark_runner_results_root }}/{{ benchmark_runner_kind }}-{{ benchmark_runner_model_key }}-{{ benchmark_runner_run_id }}"
+benchmark_runner_tmux_session: "{{ benchmark_session | default((gb10_tmux_prefix | default('gb10')) ~ '-' ~ benchmark_runner_kind ~ '-' ~ benchmark_runner_model_key) }}"
+benchmark_runner_endpoint_host: "{{ endpoint_host | default('127.0.0.1') }}"
+benchmark_runner_endpoint_port: "{{ endpoint_port | default(benchmark_runner_model.port | default(8000)) }}"
+benchmark_runner_endpoint_url: "{{ endpoint_url | default('http://' ~ benchmark_runner_endpoint_host ~ ':' ~ (benchmark_runner_endpoint_port | string) ~ '/v1/completions') }}"
+benchmark_runner_model_alias: "{{ served_model_name | default(benchmark_runner_model.served_model_name | default(benchmark_runner_model_key)) }}"
+benchmark_runner_lm_eval_python: "{{ lm_eval_python | default('python3') }}"
+benchmark_runner_lm_eval_module: lm_eval
+benchmark_runner_gsm8k_task: "{{ gsm8k_task | default('gsm8k') }}"
+benchmark_runner_gsm8k_filter: flexible-extract
+benchmark_runner_num_concurrent: "{{ num_concurrent | default(4) }}"
+benchmark_runner_max_retries: "{{ max_retries | default(3) }}"
+benchmark_runner_max_gen_toks: "{{ max_gen_toks | default(2048) }}"
+benchmark_runner_limit: "{{ benchmark_limit | default('') }}"
+benchmark_runner_temperature: "{{ temperature | default(0) }}"
+benchmark_runner_extra_lm_eval_args: "{{ extra_lm_eval_args | default([]) }}"
+benchmark_runner_custom_command: "{{ benchmark_command | default('') }}"
+benchmark_runner_monitor_only: "{{ monitor_only | default(false) }}"
+benchmark_runner_launch: "{{ launch_benchmark | default(true) }}"
+benchmark_runner_force_relaunch: false
+benchmark_runner_capture_lines: 120

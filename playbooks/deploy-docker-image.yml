@@ -1,0 +1,97 @@
+---
+- name: Deploy Docker image to GB10 nodes
+  hosts: gb10
+  gather_facts: true
+  vars:
+    docker_image_name: "{{ image_name | default('') }}"
+    docker_image_tar: "{{ image_tar | default('') }}"
+    docker_image_pull: "{{ image_pull | default(docker_image_name) }}"
+    docker_image_load_enabled: "{{ docker_image_tar | length > 0 }}"
+    docker_image_pull_enabled: "{{ docker_image_tar | length == 0 and docker_image_pull | length > 0 }}"
+  pre_tasks:
+    - name: Require explicit target limit unless override is set
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined or gb10_allow_unlimited_image_deploy | default(false) | bool
+        fail_msg: >-
+          Refusing to deploy Docker image without --limit/-l. Re-run with
+          -l <host-or-group> or set gb10_allow_unlimited_image_deploy=true intentionally.
+        success_msg: Docker image deploy target scope is explicit.
+    - name: Require image pull name or image tar path
+      ansible.builtin.assert:
+        that:
+          - docker_image_pull_enabled | bool or docker_image_load_enabled | bool
+        fail_msg: Provide -e image_name=<registry/image:tag> or -e image_tar=<controller-path>.
+  tasks:
+    - name: Check Docker CLI exists on target
+      ansible.builtin.command: which docker
+      register: docker_deploy_docker_cli
+      changed_when: false
+      failed_when: docker_deploy_docker_cli.rc != 0
+
+    - name: Check controller Docker tar exists when loading from tar
+      ansible.builtin.stat:
+        path: "{{ docker_image_tar }}"
+      delegate_to: localhost
+      become: false
+      register: docker_deploy_tar_stat
+      when: docker_image_load_enabled | bool
+
+    - name: Require existing Docker tar on controller
+      ansible.builtin.assert:
+        that:
+          - docker_deploy_tar_stat.stat.exists | default(false)
+        fail_msg: "Docker tar not found on controller: {{ docker_image_tar }}"
+      when: docker_image_load_enabled | bool
+
+    - name: Create remote temporary Docker image directory
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: gb10-docker-image
+      register: docker_deploy_tempdir
+      when: docker_image_load_enabled | bool
+
+    - name: Copy Docker image tar to target
+      ansible.builtin.copy:
+        src: "{{ docker_image_tar }}"
+        dest: "{{ docker_deploy_tempdir.path }}/image.tar"
+        mode: "0644"
+      when: docker_image_load_enabled | bool
+
+    - name: Load Docker image from tar
+      ansible.builtin.command: "docker load -i {{ docker_deploy_tempdir.path }}/image.tar"
+      become: true
+      register: docker_deploy_load
+      changed_when: true
+      when: docker_image_load_enabled | bool
+
+    - name: Pull Docker image from registry
+      ansible.builtin.command: "docker pull {{ docker_image_pull }}"
+      become: true
+      register: docker_deploy_pull
+      changed_when: >-
+        'Downloaded newer image' in docker_deploy_pull.stdout or
+        'Pull complete' in docker_deploy_pull.stdout or
+        docker_deploy_pull.rc == 0
+      when: docker_image_pull_enabled | bool
+
+    - name: Inspect deployed Docker image
+      ansible.builtin.command: "docker image inspect {{ docker_image_pull if docker_image_pull_enabled | bool else docker_image_name }}"
+      register: docker_deploy_inspect
+      changed_when: false
+      failed_when: false
+
+    - name: Remove remote temporary Docker image directory
+      ansible.builtin.file:
+        path: "{{ docker_deploy_tempdir.path }}"
+        state: absent
+      become: true
+      when: docker_image_load_enabled | bool and docker_deploy_tempdir.path is defined
+
+    - name: Emit Docker deploy summary
+      ansible.builtin.debug:
+        msg:
+          loaded_from_tar: "{{ docker_image_load_enabled }}"
+          pulled_from_registry: "{{ docker_image_pull_enabled }}"
+          image: "{{ docker_image_pull if docker_image_pull_enabled | bool else docker_image_name }}"
+          inspect_available: "{{ docker_deploy_inspect.rc == 0 }}"

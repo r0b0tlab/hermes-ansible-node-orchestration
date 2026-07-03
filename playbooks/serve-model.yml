@@ -1,0 +1,20 @@
+---
+- name: Serve model with vLLM on GB10 nodes
+  hosts: gb10
+  gather_facts: true
+  pre_tasks:
+    - name: Require explicit target limit unless override is set
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined or gb10_allow_unlimited_serve | default(false) | bool
+        fail_msg: >-
+          Refusing to serve model without --limit/-l. Re-run with -l <host-or-group>
+          or set gb10_allow_unlimited_serve=true intentionally.
+        success_msg: Serve target scope is explicit.
+    - name: Require model key
+      ansible.builtin.assert:
+        that:
+          - model_key is defined
+        fail_msg: Provide -e model_key=<key> for gb10_models lookup.
+  roles:
+    - role: vllm_service

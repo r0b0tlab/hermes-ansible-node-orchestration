@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+RUN_DIR={{ benchmark_runner_run_dir | quote }}
+mkdir -p "$RUN_DIR"
+cd "$RUN_DIR"
+
+cat > run-meta.json <<'JSON'
+{
+  "benchmark": "{{ benchmark_runner_kind }}",
+  "model_key": "{{ benchmark_runner_model_key }}",
+  "model_alias": "{{ benchmark_runner_model_alias }}",
+  "endpoint_url": "{{ benchmark_runner_endpoint_url }}",
+  "run_id": "{{ benchmark_runner_run_id }}",
+  "task": "{{ benchmark_runner_gsm8k_task }}",
+  "filter": "{{ benchmark_runner_gsm8k_filter }}",
+  "max_gen_toks": {{ benchmark_runner_max_gen_toks }},
+  "num_concurrent": {{ benchmark_runner_num_concurrent }},
+  "max_retries": {{ benchmark_runner_max_retries }}
+}
+JSON
+
+export OPENAI_API_KEY="not-needed-for-local-model"
+export OPENAI_API_BASE={{ ('http://' ~ benchmark_runner_endpoint_host ~ ':' ~ (benchmark_runner_endpoint_port | string) ~ '/v1') | quote }}
+
+{{ benchmark_runner_lm_eval_python }} -m {{ benchmark_runner_lm_eval_module }}   --model local-completions   --model_args model={{ benchmark_runner_model_alias | quote }},base_url={{ benchmark_runner_endpoint_url | quote }},num_concurrent={{ benchmark_runner_num_concurrent }},max_retries={{ benchmark_runner_max_retries }}   --tasks {{ benchmark_runner_gsm8k_task | quote }}   --num_fewshot 0   --gen_kwargs temperature={{ benchmark_runner_temperature }},max_gen_toks={{ benchmark_runner_max_gen_toks }}   --log_samples   --output_path "$RUN_DIR"{% if benchmark_runner_limit | string | length > 0 %}   --limit {{ benchmark_runner_limit }}{% endif %}{% for arg in benchmark_runner_extra_lm_eval_args %}   {{ arg }}{% endfor %}   2>&1 | tee "$RUN_DIR/run.log"
+
+sha256sum "$RUN_DIR"/* > "$RUN_DIR/MANIFEST.sha256" 2>/dev/null || true

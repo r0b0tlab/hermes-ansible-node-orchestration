@@ -1,0 +1,7 @@
+# GB10 artifact manifest
+Host: {{ inventory_hostname }}
+Model key: {{ model_artifacts_model_key | default('explicit-paths') }}
+Destination: {{ model_artifacts_destination_path }}
+Source: {{ model_artifacts_source_path | default('not-synced-from-controller') }}
+
+{{ model_artifacts_remote_manifest.stdout | default('manifest unavailable') }}

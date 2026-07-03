@@ -1,0 +1,22 @@
+---
+- name: Sync model artifacts to GB10 nodes
+  hosts: gb10
+  gather_facts: true
+  pre_tasks:
+    - name: Require explicit target limit unless override is set
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined or gb10_allow_unlimited_model_sync | default(false) | bool
+        fail_msg: >-
+          Refusing to sync model artifacts without --limit/-l. Re-run with
+          -l <host-or-group> or set gb10_allow_unlimited_model_sync=true intentionally.
+        success_msg: Model sync target scope is explicit.
+    - name: Require model key or explicit paths
+      ansible.builtin.assert:
+        that:
+          - model_key is defined or (model_source_path is defined and model_destination_path is defined)
+        fail_msg: >-
+          Provide -e model_key=<key> for gb10_models lookup, or provide
+          -e model_source_path=<path> -e model_destination_path=<path>.
+  roles:
+    - role: model_artifacts

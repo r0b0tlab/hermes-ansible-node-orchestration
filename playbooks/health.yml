@@ -1,0 +1,6 @@
+---
+- name: Collect GB10 health status
+  hosts: gb10
+  gather_facts: true
+  roles:
+    - role: gb10_health

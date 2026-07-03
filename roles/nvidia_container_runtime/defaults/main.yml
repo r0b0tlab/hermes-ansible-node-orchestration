@@ -1,0 +1,10 @@
+---
+nvidia_container_runtime_manage_docker: "{{ gb10_docker_enabled | default(true) }}"
+nvidia_container_runtime_manage_toolkit: "{{ gb10_nvidia_container_toolkit_enabled | default(true) }}"
+nvidia_container_runtime_install_packages: true
+nvidia_container_runtime_docker_packages:
+  - docker.io
+nvidia_container_runtime_toolkit_packages:
+  - nvidia-container-toolkit
+nvidia_container_runtime_configure_default: false
+nvidia_container_runtime_restart_docker: false

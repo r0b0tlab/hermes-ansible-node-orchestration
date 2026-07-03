@@ -1,0 +1,107 @@
+---
+- name: Define evidence paths
+  ansible.builtin.set_fact:
+    evidence_bundle_host_dir: "{{ evidence_bundle_local_root }}/{{ evidence_bundle_run_id }}/{{ inventory_hostname }}"
+
+- name: Create local evidence directory
+  ansible.builtin.file:
+    path: "{{ evidence_bundle_host_dir }}"
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+  become: false
+
+- name: Capture host identity evidence
+  ansible.builtin.command: hostnamectl
+  register: evidence_bundle_hostnamectl
+  changed_when: false
+  failed_when: false
+
+- name: Capture kernel and date evidence
+  ansible.builtin.shell: "set -o pipefail && date -u -Is && uname -a"
+  args:
+    executable: /bin/bash
+  register: evidence_bundle_kernel_date
+  changed_when: false
+  failed_when: false
+
+- name: Capture GPU evidence
+  ansible.builtin.command: nvidia-smi
+  register: evidence_bundle_nvidia_smi
+  changed_when: false
+  failed_when: false
+
+- name: Capture Docker process evidence
+  ansible.builtin.command: docker ps --no-trunc
+  register: evidence_bundle_docker_ps
+  changed_when: false
+  failed_when: false
+
+- name: Capture tmux session evidence
+  ansible.builtin.command: tmux ls
+  register: evidence_bundle_tmux_ls
+  changed_when: false
+  failed_when: false
+
+- name: Save text evidence locally
+  ansible.builtin.copy:
+    dest: "{{ evidence_bundle_host_dir }}/{{ item.name }}"
+    mode: "0644"
+    content: "{{ item.content }}
+"
+  delegate_to: localhost
+  become: false
+  loop:
+    - name: hostnamectl.txt
+      content: "{{ evidence_bundle_hostnamectl.stdout | default('') }}"
+    - name: kernel-date.txt
+      content: "{{ evidence_bundle_kernel_date.stdout | default('') }}"
+    - name: nvidia-smi.txt
+      content: "{{ evidence_bundle_nvidia_smi.stdout | default('') }}"
+    - name: docker-ps.txt
+      content: "{{ evidence_bundle_docker_ps.stdout | default('') }}"
+    - name: tmux-ls.txt
+      content: "{{ evidence_bundle_tmux_ls.stdout | default('') }}"
+
+- name: Capture requested tmux panes
+  ansible.builtin.command: "tmux capture-pane -t {{ item }} -p -S -200"
+  register: evidence_bundle_tmux_panes
+  changed_when: false
+  failed_when: false
+  loop: "{{ evidence_bundle_tmux_sessions }}"
+  when: evidence_bundle_tmux_sessions | length > 0
+
+- name: Save requested tmux pane captures locally
+  ansible.builtin.copy:
+    dest: "{{ evidence_bundle_host_dir }}/tmux-{{ item.item | regex_replace('[^A-Za-z0-9_.-]', '_') }}.txt"
+    mode: "0644"
+    content: "{{ item.stdout | default('') }}
+"
+  delegate_to: localhost
+  become: false
+  loop: "{{ evidence_bundle_tmux_panes.results | default([]) }}"
+  when: evidence_bundle_tmux_sessions | length > 0
+
+- name: Write evidence summary
+  ansible.builtin.copy:
+    dest: "{{ evidence_bundle_host_dir }}/SUMMARY.md"
+    mode: "0644"
+    content: |
+      # Evidence summary
+
+      Host: {{ inventory_hostname }}
+      Address: {{ ansible_host | default(inventory_hostname) }}
+      Run ID: {{ evidence_bundle_run_id }}
+
+      Files:
+      - hostnamectl.txt
+      - kernel-date.txt
+      - nvidia-smi.txt
+      - docker-ps.txt
+      - tmux-ls.txt
+  delegate_to: localhost
+  become: false
+
+- name: Emit evidence location
+  ansible.builtin.debug:
+    msg: "Evidence for {{ inventory_hostname }} written to {{ evidence_bundle_host_dir }}"
