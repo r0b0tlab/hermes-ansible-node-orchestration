@@ -156,6 +156,16 @@ This repo is intended to support three user patterns:
 3. Future profile distribution.
    - Package a full GB10 cluster-operator Hermes profile using `distribution.yaml`, skills, and safe tool defaults.
 
+## Architecture diagram
+
+A presentation-ready architecture diagram is available at:
+
+- `docs/architecture/architecture-diagram.png`
+- `docs/architecture/architecture-diagram.svg`
+- `docs/architecture/architecture-diagram.html`
+
+The diagram shows the operator request flow through Hermes, `AGENTS.md`, the bundled skill, repo inventory/vars/playbooks/roles, Ansible execution on generic GB10 nodes, and the safety/evidence reporting loop.
+
 ## Source docs used for this plan
 
 See `docs/reference/DOC_SOURCES.md`.
